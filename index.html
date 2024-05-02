@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <script type="text/javascript" async
+        src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-MML-AM_CHTML">
+    </script>
+    <script type="text/x-mathjax-config">
+        MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
+    </script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script defer type="text/javascript" src="main.js"></script>
+    <title>Péndulo Doble</title>
+</head>
+<body>
+    <div id="wrapper">
+        <canvas id="canvas" width="800" height="800"></canvas>
+        
+        <div id="controls">
+            <div id="inputs">
+                <div class="control_buttons">
+                    <svg id="play" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-play-fill" viewBox="0 0 16 16">
+                        <path d="M5.5 3.5A1.5 1.5 0 0 1 7 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5m5 0A1.5 1.5 0 0 1 12 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5"></path>
+                    </svg>
+                    <svg id="reset" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-counterclockwise" viewBox="0 0 16 16">
+                        <path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2z"/>
+                        <path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466"/>
+                    </svg>
+                    <svg id="skip" style="opacity: 50%" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-skip-end-fill" viewBox="0 0 16 16">
+                        <path d="M12.5 4a.5.5 0 0 0-1 0v3.248L5.233 3.612C4.693 3.3 4 3.678 4 4.308v7.384c0 .63.692 1.01 1.233.697L11.5 8.753V12a.5.5 0 0 0 1 0z"/>
+                    </svg>
+                    
+                </div>
+
+                <h2>Péndulos</h2>
+                <select size="4" id ="select_pendulum">
+                    <option value="0" class="active">Péndulo 1</option>
+                </select>
+
+                <div class="control_buttons">
+                    <svg onclick="add_pendulum()" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle-fill" viewBox="0 0 16 16">
+                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M8.5 4.5a.5.5 0 0 0-1 0v3h-3a.5.5 0 0 0 0 1h3v3a.5.5 0 0 0 1 0v-3h3a.5.5 0 0 0 0-1h-3z"/>
+                    </svg>
+                    <svg onclick="delete_pendulum()" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-dash-circle-fill" viewBox="0 0 16 16">
+                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M4.5 7.5a.5.5 0 0 0 0 1h7a.5.5 0 0 0 0-1z"/>
+                    </svg>
+                </div>
+                
+                <div class="wrapper">
+                    <h2>Parámetros</h2>
+                    <div class="input">
+                        <label for="m1">Masa 1:</label>
+                        <input type="range" id="m1_range" step="any" min="0.1" max="5" value="1">
+                        <input type="number" id="m1_number"  min="0.1" max="5" value="1">
+                    </div>
+                    <div class="input">
+                        <label for="m2">Masa 2:</label>
+                        <input type="range" id="m2_range" step="any" min="0.1" max="5" value="1">
+                        <input type="number" id="m2_number" min="0.1" max="5" value="1">
+                    </div>
+                    <div class="input">
+                        <label for="l1">Longitud 1:</label>
+                        <input type="range" id="l1_range" step="any" min="0.05" max="1" value="1">
+                        <input type="number" id="l1_number" min="0.05" max="5" value="1">
+                    </div>
+                    <div class="input">
+                        <label for="l2">Longitud 2:</label>
+                        <input type="range" id="l2_range" step="any" min="0.05" max="1" value="1">
+                        <input type="number" id="l2_number" min="0.05" max="5" value="1">
+                    </div>
+                    
+                    <div class="input">
+                        <label for="g">Gravedad:</label>
+                        <input type="range" id="g_range" step="any" min="1" max="20" value="9.8">
+                        <input type="number" id="g_number" min="1" max="20" value="9.8">
+                    </div>
+                </div>
+            </div>
+
+            <div class="wrapper">
+                <h2>Condiciones Iniciales</h2>
+                <div class="input">
+                    <label for="a1">Ángulo 1:</label>
+                    <input type="range" id="a1_range" step="any" min="0" max="360" value="120">
+                    <input type="number" id="a1_number" min="0" max="360" value="120">
+                </div>
+                <div class="input">
+                    <label for="a2">Ángulo 2:</label>
+                    <input type="range" id="a2_range" step="any" min="0" max="360" value="10">
+                    <input type="number" id="a2_number" min="0" max="360" value="10">
+                </div>
+                <div class="input">
+                    <label for="v1">Velocidad 1:</label>
+                    <input type="range" id="v1_range" step="any" min="0" max="10" value="1">
+                    <input type="number" id="v1_number" min="0" max="10" value="1">
+                </div>
+                <div class="input">
+                    <label for="v2">Velocidad 2:</label>
+                    <input type="range" id="v2_range" step="any" min="0" max="10" value="1">
+                    <input type="number" id="v2_number" min="0" max="10" value="1">
+                </div>
+            </div>
+
+            <div class="wrapper">
+            <h2>Visualización</h2>
+                <div class="input">
+                    <label for = "trajectory1">Mostrar trayectoria 1</label>
+                    <input type="checkbox" id="trajectory1" checked>
+                </div>
+                <div class="input">
+                    <label for = "trajectory2">Mostrar trayectoria 2</label>
+                    <input type="checkbox" id="trajectory2" checked>
+                </div>
+            </div>
+        </div>
+        </div>
+    </div>
+
+    
+
+    
+</body>
+</html>
