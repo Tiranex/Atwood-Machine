@@ -1,23 +1,25 @@
 const canvas = document.getElementById("canvas");
 const context = canvas.getContext('2d');
+let min = null;
 
-/* Variables */
-let L=0.5;
-let r=0.5;
-let theta =  Math.PI;
-let Total_Length = 1;
-let pos_m = [r*Math.cos(theta-Math.PI/2), r*Math.sin(theta-Math.PI/2)];
-let Pos_m = 5;
-
-/* Constantes SISTEMA */
-let m = 5;
-let M = 10;
-let g = 9.81;
 /*COLORS */
 const background_color = "#333";
 const axis_color = "white";
-const circle_colors = ["red", "blue"]; // red for M || blue for m
-const circle_radius = [20, 30];
+const bar_color = ["gray", "gray", "gray", "gray"];
+const circle_color = ["red", "blue", "green", "purple"];
+const circle_trajectory_color=["lightcoral", "lightblue", "lightgreen", "#CBC3E3"]
+const circle_radius = 20;
+
+let trajectory1 = [[]];
+let trajectory2 = [[]];
+let draw_trajectory1 = true;
+let draw_trajectory2 = true;
+const max_trajectory_length = 100;
+let n_pendulums = 1;
+
+let end = false;
+
+let pos = [[[Math.random() * 3.5 - 1.75, Math.random() * 3.5 - 1.75], [Math.random() * 3.5 - 1.75, Math.random() * 3.5 - 1.75]]]
 
 function draw_axis(){
     context.fillStyle = background_color;
@@ -52,64 +54,77 @@ function draw_axis_labels(){
         context.fillText(i, canvas.width/2 + i*min/4, canvas.height - 20);
     }
 }
+function draw_variables() {
+    context.font = "15px Montserrat";
+    context.fillStyle = "white";
+    context.fillText(`Péndulo: ${selected_pendulum+1}`, canvas.width - 100, 30);
+    context.fillText(`θ1: ${(y[selected_pendulum][0]*180 / Math.PI).toFixed(2)}`, canvas.width - 100, 50);
+    context.fillText(`θ2: ${(y[selected_pendulum][1]*180 / Math.PI).toFixed(2)}`, canvas.width - 100, 70);
+    context.fillText(`ω1: ${(y[selected_pendulum][2]*180 / Math.PI).toFixed(2)}`, canvas.width - 100, 90);
+    context.fillText(`ω2: ${(y[selected_pendulum][3]*180 / Math.PI).toFixed(2)}`, canvas.width - 100, 110);
+}
 
-function draw_elements(){
-
-    const L_height = canvas_to_cartesian(0, canvas.height/3)[1];
-    // Linea aux
+function draw_elements(i){
+    
+    // Trajectory
+    if(draw_trajectory1) {
+        for(let j = 0; j<trajectory1[i].length; j++){
+            context.fillStyle = circle_trajectory_color[i];
+            context.beginPath();
+            context.arc(...cartesian_to_canvas(trajectory1[i][j][0], trajectory1[i][j][1]), 5, 0, 2*Math.PI);
+            context.fill();
+            context.closePath();
+        }
+    }
+    
+    if(draw_trajectory2) {
+        for(let j = 0; j<trajectory2[i].length; j++){
+            context.fillStyle = circle_trajectory_color[i];
+            context.beginPath();
+            context.arc(...cartesian_to_canvas(trajectory2[i][j][0], trajectory2[i][j][1]), 5, 0, 2*Math.PI);
+            context.fill();
+            context.closePath();
+        }
+    }
+    
+    // Lines
+    context.strokeStyle = bar_color[i];
+    context.lineWidth = 3;
     context.beginPath();
-    context.moveTo(...cartesian_to_canvas(-L, L_height));
-    context.lineTo(...cartesian_to_canvas(L, L_height));
+    context.moveTo(canvas.width/2, canvas.height/2);
+    context.lineTo(...cartesian_to_canvas(pos[i][0][0], pos[i][0][1]));
     context.stroke();
     context.closePath();
-    
 
-    // m pequeña
     context.beginPath();
-    context.moveTo(...cartesian_to_canvas(-L, L_height));
-    const cart_pos = cartesian_to_canvas(pos_m[0] - L, L_height + pos_m[1]);
-    context.lineTo(...cart_pos);
+    context.moveTo(...cartesian_to_canvas(pos[i][0][0], pos[i][0][1]));
+    context.lineTo(...cartesian_to_canvas(pos[i][1][0], pos[i][1][1]));
     context.stroke();
     context.closePath();
-    
-    context.fillStyle= circle_colors[0];
+
+    // Circles
+    context.fillStyle = circle_color[i];
     context.beginPath();
-    context.arc(...cart_pos, circle_radius[0], 0, 2*Math.PI);
+    context.arc(...cartesian_to_canvas(pos[i][0][0], pos[i][0][1]), circle_radius, 0, 2*Math.PI);
     context.fill();
     context.closePath();
 
-    // text for m
-    context.fillStyle="white";
-    context.font = '20px Helvetica';
-    context.textAlign = 'center';
-    context.textBaseline = 'middle';
-    context.fillText("m", ...cart_pos);
-    
-    // M grande
     context.beginPath();
-    context.moveTo(...cartesian_to_canvas(L, L_height));
-    context.lineTo(...cartesian_to_canvas(L,  L_height - (Total_Length-r)));
-    context.stroke();
-    context.closePath();
-
-    context.fillStyle = circle_colors[1];
-    context.beginPath();
-    context.arc(...cartesian_to_canvas(L,  L_height - (Total_Length-r)), circle_radius[1], 0, 2*Math.PI);
+    context.arc(...cartesian_to_canvas(pos[i][1][0], pos[i][1][1]), circle_radius, 0, 2*Math.PI);
     context.fill();
     context.closePath();
 
-    // text for M
-    context.fillStyle="white";
-    context.font = '20px Helvetica';
-    context.textAlign = 'center';
-    context.textBaseline = 'middle';
-    context.fillText("M", ...cartesian_to_canvas(L,  L_height - (Total_Length-r)));
-
+    
+    
 }
 function draw(){
     draw_axis();
     draw_axis_labels();
-    draw_elements();
+    //draw_variables();
+    //update();
+    
+    //for(let i =0; i<y.length; i++)
+    //    draw_elements(i);
 }
 
 function update(){
@@ -153,10 +168,6 @@ function cartesian_to_canvas(x, y){
     return [canvas.width/2 + x*min/4, canvas.height/2 - y*min/4];
 }
 
-function canvas_to_cartesian(x, y){
-    return [(x - canvas.width/2) * 4/min, (canvas.height/2 - y) * 4/min];
-}
-
 window.onresize = resize;
 
 
@@ -174,11 +185,10 @@ let w_2 = [0];
 let y = [[theta1[0], theta2[0], w_1[0], w_2[0]]]
 /* Solver */
 function f(yprime, y, i, t){
-    // y = [r, pr, theta, ptheta]
-    yprime[0] = y[1] / (m + M);
-    yprime[1] = y[3]**2 / (m*y[0]**3) - M*g + m*g*Math.cos(y[2]);
-    yprime[2] = y[3] / (m * y[0]**2);
-    yprime[3] = -m * g * y[0] * Math.sin(theta);
+    // We copy the values know from state into yprime
+    yprime[0] = y[2]
+    yprime[1] = y[3]
+
     let num = -g*(2*m1[i] + m2[i])*Math.sin(y[0]) - m2[i]*g*Math.sin(y[0] - 2*y[1]) - 2*Math.sin(y[0] - y[1])*m2[i]*(y[3]**2*l2[i] + y[2]**2*l1[i]*Math.cos(y[0] - y[1]))
     let den = l1[i]*(2*m1[i] + m2[i] - m2[i]*Math.cos(2*y[0] - 2*y[1]))
  
