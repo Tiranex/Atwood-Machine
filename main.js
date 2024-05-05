@@ -3,21 +3,32 @@ const context = canvas.getContext('2d');
 
 /* Variables */
 let L=0.5;
-let r=0.5;
-let theta =  Math.PI;
-let Total_Length = 1;
+let r=0.75;
+let theta = Math.PI;
+let Total_Length = 2;
+let L_height;
 let pos_m = [r*Math.cos(theta-Math.PI/2), r*Math.sin(theta-Math.PI/2)];
-let Pos_m = 5;
-
+theta = Math.PI/2;
+let end = false;
 /* Constantes SISTEMA */
-let m = 5;
-let M = 10;
+let m = 200;
+let M = 450;
 let g = 9.81;
+const time_step = 0.01;
+let y = [r, 0, Math.PI/2, 0]; 
 /*COLORS */
 const background_color = "#333";
 const axis_color = "white";
 const circle_colors = ["red", "blue"]; // red for M || blue for m
 const circle_radius = [20, 30];
+/* Trajectories */
+const max_trajectory=5000;
+const trajectory_color = "white";
+const trajectory_radius = 0.15;
+let trajectory_index=0;
+let trajectory =new Array(max_trajectory).fill(0);
+let draw_trajectory_check = true;
+
 
 function draw_axis(){
     context.fillStyle = background_color;
@@ -54,8 +65,6 @@ function draw_axis_labels(){
 }
 
 function draw_elements(){
-
-    const L_height = canvas_to_cartesian(0, canvas.height/3)[1];
     // Linea aux
     context.beginPath();
     context.moveTo(...cartesian_to_canvas(-L, L_height));
@@ -88,13 +97,13 @@ function draw_elements(){
     // M grande
     context.beginPath();
     context.moveTo(...cartesian_to_canvas(L, L_height));
-    context.lineTo(...cartesian_to_canvas(L,  L_height - (Total_Length-r)));
+    context.lineTo(...cartesian_to_canvas(L,  L_height - (Total_Length-y[0])));
     context.stroke();
     context.closePath();
 
     context.fillStyle = circle_colors[1];
     context.beginPath();
-    context.arc(...cartesian_to_canvas(L,  L_height - (Total_Length-r)), circle_radius[1], 0, 2*Math.PI);
+    context.arc(...cartesian_to_canvas(L,  L_height - (Total_Length-y[0])), circle_radius[1], 0, 2*Math.PI);
     context.fill();
     context.closePath();
 
@@ -103,13 +112,58 @@ function draw_elements(){
     context.font = '20px Helvetica';
     context.textAlign = 'center';
     context.textBaseline = 'middle';
-    context.fillText("M", ...cartesian_to_canvas(L,  L_height - (Total_Length-r)));
+    context.fillText("M", ...cartesian_to_canvas(L,  L_height - (Total_Length-y[0])));
 
+}
+
+function draw_variables() {
+    context.font = "15px Montserrat";
+    context.fillStyle = "white";
+    context.textAlign = "right";
+    context.fillText("Valores Actuales", canvas.width - 10, 30);
+    context.fillText(`r: ${y[0].toFixed(2)}`, canvas.width - 10, 50);
+    const thetaDegrees = ((y[2] * 180 / Math.PI) % 360).toFixed(2);
+    context.fillText(`θ: ${thetaDegrees}°`, canvas.width - 10, 70);
+
+    context.textAlign = "left";
+    context.fillText("Parámetros Actuales", 30, 30);
+    const thetaDegrees_2 = ((theta * 180 / Math.PI) % 360).toFixed(2);
+    context.fillText(`μ: ${(M/m).toFixed(2)} || θ0: ${thetaDegrees_2}`, 30, 50);
+}
+
+
+function draw_trajectory(){
+    if(!draw_trajectory_check)
+        return;
+
+    context.fillStyle= trajectory_color;
+    
+    /* Trajectory radius 
+    for(let i = 0; i< trajectory_index; i++){
+        context.beginPath();
+        const cart_pos = cartesian_to_canvas(trajectory[i][0] - L, L_height + trajectory[i][1]);
+        context.arc(...cart_pos, trajectory_radius, 0, 2*Math.PI);
+        context.fill();
+        context.closePath();
+    } */
+    
+    context.beginPath(); 
+    context.moveTo(...cartesian_to_canvas(trajectory[0][0] -L, L_height + trajectory[0][1]));
+    for(let i = 1; i< trajectory_index; i++){
+        const cart_pos = cartesian_to_canvas(trajectory[i][0] - L, L_height + trajectory[i][1]);
+        context.lineTo(...cart_pos);
+    }
+
+    context.stroke();
+    context.closePath();
 }
 function draw(){
     draw_axis();
     draw_axis_labels();
+    draw_trajectory();
+    draw_variables();
     draw_elements();
+    update();
 }
 
 function update(){
@@ -119,19 +173,14 @@ function update(){
 }
 
 function solve(){
-    for(let i =0; i<y.length; i++){
-        y[i] = runge_Kutta(0, y[i], f, time_step, i)
-        pos[i][0] = [l1[i]*Math.sin(y[i][0]), -l1[i]*Math.cos(y[i][0])]
-        pos[i][1] = [l2[i]*Math.sin(y[i][1]) + pos[i][0][0], -l2[i]*Math.cos(y[i][1]) + pos[i][0][1]]
-        
-        trajectory1[i].push(pos[i][0]);
-        trajectory2[i].push(pos[i][1]);
-
-        if(trajectory1[i].length > max_trajectory_length)
-            trajectory1[i].shift();
-        if(trajectory2[i].length > max_trajectory_length)
-            trajectory2[i].shift();
-    }
+    y = runge_Kutta(0, y, f, time_step, 0)
+    pos_m = [y[0]*Math.cos(y[2]-Math.PI/2), y[0]*Math.sin(y[2]-Math.PI/2)]
+    
+    trajectory[trajectory_index] = pos_m.slice();
+    
+    trajectory_index++;
+    if(trajectory_index == max_trajectory)
+        trajectory_index=0;
 }
 
 
@@ -159,35 +208,13 @@ function canvas_to_cartesian(x, y){
 
 window.onresize = resize;
 
-
-/* Connect Elements to inputs */
-let m1 = [2];
-let m2 = [2];
-let l1 = [1];
-let l2 = [1];
-let g = 9.81;
-const time_step = 0.01;
-let theta1 = [2*Math.PI*(2/3)];
-let theta2 = [2*Math.PI*(10/360)];
-let w_1 = [0];
-let w_2 = [0];
-let y = [[theta1[0], theta2[0], w_1[0], w_2[0]]]
 /* Solver */
 function f(yprime, y, i, t){
     // y = [r, pr, theta, ptheta]
     yprime[0] = y[1] / (m + M);
     yprime[1] = y[3]**2 / (m*y[0]**3) - M*g + m*g*Math.cos(y[2]);
     yprime[2] = y[3] / (m * y[0]**2);
-    yprime[3] = -m * g * y[0] * Math.sin(theta);
-    let num = -g*(2*m1[i] + m2[i])*Math.sin(y[0]) - m2[i]*g*Math.sin(y[0] - 2*y[1]) - 2*Math.sin(y[0] - y[1])*m2[i]*(y[3]**2*l2[i] + y[2]**2*l1[i]*Math.cos(y[0] - y[1]))
-    let den = l1[i]*(2*m1[i] + m2[i] - m2[i]*Math.cos(2*y[0] - 2*y[1]))
- 
-    yprime[2] = num/den
-
-    num = 2*Math.sin(y[0] - y[1])*(y[2]**2*l1[i]*(m1[i] + m2[i]) + g*(m1[i] + m2[i])*Math.cos(y[0]) + y[3]**2*l2[i]*m2[i]*Math.cos(y[0] - y[1]))
-    den = l2[i]*(2*m1[i] + m2[i] - m2[i]*Math.cos(2*y[0] - 2*y[1]))
-
-    yprime[3] = num/den
+    yprime[3] = -m * g * y[0] * Math.sin(y[2]);
     
     return yprime 
 }
@@ -256,16 +283,6 @@ function const_multiplication(c, p){
     return vec
 }
 
-/* Start Reset */
-function reset(){
-    end = false;
-    for(let i =0; i<y.length; i++){
-        y[i] = [theta1[i], theta2[i], w_1[i], w_2[i]]
-        trajectory1[i] = [];
-        trajectory2[i] = [];
-    }
-}
-
 function play_pause(){
     if(end){
         end = false;
@@ -279,283 +296,116 @@ function play_pause(){
 const play_button = document.getElementById("play")
 play_button.onclick = play_pause;
 
+function reset(){
+    y = [r, 0, theta, 0];
+    cleartrajectory();
+    end = false;
+}
+
+/* Variable for orbits */
+let current_orbit = 0;
+let orbits = 
+function next_orbit(){
+    
+}
+
 document.getElementById("reset").onclick = reset;
 
-let interval = null;
-document.getElementById("skip").addEventListener("mousedown", function(){
-    if(end==false)
-        play_pause();
-        
-    interval = setInterval(solve, time_step*4000);
-});
+document.getElementById("shuffle").onclick;
 
-document.getElementById("skip").addEventListener("mouseup", function(){
-    clearInterval(interval);
-});
-
-/* Handle Multiple Pendulums */
-let selected_pendulum = 0;
-const pendulum_selector = document.getElementById("select_pendulum");
-
-pendulum_selector.onchange = function(){
-    const options = document.querySelectorAll("#select_pendulum option");
-    options[selected_pendulum].classList.remove("active");
-    selected_pendulum = parseInt(this.value);
-    options[selected_pendulum].classList.add("active");
-    load_settings();
+document.getElementById("m_range").onchange = function(){
+    m = parseFloat(parseFloat(this.value).toFixed(2));
+    document.getElementById("m_number").value = m;
 }
-
-
-function add_pendulum(){
-    if(n_pendulums == 4)
-        return;
-    n_pendulums++;
-    y.push([0,0,0,0])
-    pos.push([[0,-1],[0,-2]])
-    m1.push(2.);
-    m2.push(2.);
-    l1.push(1.);
-    l2.push(1.);
-    theta1.push(0.);
-    theta2.push(0.);
-    w_1.push(0.);
-    w_2.push(0.);
-
-    trajectory1.push([])
-    trajectory2.push([])
-    
-    const options = document.querySelectorAll("#select_pendulum option");
-    options[selected_pendulum].classList.remove("active");
-    pendulum_selector.innerHTML += `<option value="${n_pendulums-1}" class="active">Pendulum ${n_pendulums}</option>`;
-    selected_pendulum = n_pendulums-1;
-    load_settings();
-    draw();
-}
-
-function delete_pendulum(){
-    if(n_pendulums == 1)
-        return;
-    n_pendulums--;
-
-    y.splice(selected_pendulum, 1);
-    pos.splice(selected_pendulum, 1);
-    m1.splice(selected_pendulum, 1);
-    m2.splice(selected_pendulum, 1);
-    l1.splice(selected_pendulum, 1);
-    l2.splice(selected_pendulum, 1);
-    theta1.splice(selected_pendulum, 1);
-    theta2.splice(selected_pendulum, 1);
-    w_1.splice(selected_pendulum, 1);
-    w_2.splice(selected_pendulum, 1);
-    trajectory1.splice(selected_pendulum, 1);
-    trajectory2.splice(selected_pendulum, 1);
-    if(selected_pendulum == n_pendulums)
-        selected_pendulum--;    
-    const options = document.querySelectorAll("#select_pendulum option");
-    pendulum_selector.removeChild(options[selected_pendulum]);
-    options[selected_pendulum].classList.add("active");
-    update_value();
-    load_settings();
-    draw();
-}
-
-function update_value(){
-    const options = document.querySelectorAll("#select_pendulum option")
-    for(let i=0; i<options.length; i++){
-        options[i].value = i;
-        options[i].textContent = `Pendulum ${i+1}`;
-    }
-}
-
-function load_settings(){
-    const i = selected_pendulum
-    document.getElementById("m1_number").value = m1[i].toFixed(2);
-    document.getElementById("m2_number").value = m2[i].toFixed(2);
-    document.getElementById("l1_number" ).value = l1[i].toFixed(2);
-    document.getElementById("l2_number" ).value = l2[i].toFixed(2);
-    document.getElementById("g_number" ).value = g.toFixed(2);
-    document.getElementById("a1_number" ).value = (theta1[i] * 180 / Math.PI).toFixed(2);
-    document.getElementById("a2_number").value = (theta2[i] * 180 / Math.PI).toFixed(2);
-    document.getElementById("v1_number").value = w_1[i].toFixed(2);
-    document.getElementById("v2_number").value = w_2[i].toFixed(2);
-
-    document.getElementById("m1_range").value = m1[i].toFixed(2);
-    document.getElementById("m2_range").value = m2[i].toFixed(2);
-    document.getElementById("l1_range" ).value = l1[i].toFixed(2);
-    document.getElementById("l2_range" ).value = l2[i].toFixed(2);
-    document.getElementById("a1_range" ).value = (theta1[i] * 180 / Math.PI).toFixed(2);
-    document.getElementById("a2_range").value = (theta2[i] * 180 / Math.PI).toFixed(2);
-    document.getElementById("v1_range").value = w_1[i].toFixed(2);
-    document.getElementById("v2_range").value = w_2[i].toFixed(2);
-    
-}
-
-/* Drag and drop functionality */
-
-let dragging_pendulum = 0;
-canvas.addEventListener("mousedown", function(event) {
-    const rect = canvas.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-    // Check if the mouse click is within the circle
-    for (let i = 0; i < pos.length; i++) {
-        for(let j = 0; j<2; j++){
-            const [circleX, circleY] = cartesian_to_canvas(pos[i][j][0], pos[i][j][1]);
-            const distance = Math.sqrt((circleX - x) ** 2 + (circleY - y) ** 2);
-            
-            if (distance <= circle_radius) {
-                if(end==false)
-                    play_pause();
-                reset();
-                end=true;
-                // Start dragging the circle
-                canvas.addEventListener("mousemove", dragCircle);
-                canvas.addEventListener("mouseup", stopDragCircle);
-                dragging_pendulum = [i, j];
-                selected_pendulum = i;
-                return;
-            }
-        }
-        
-        
-    }
-});
-
-function dragCircle(event) {
-    const rect = canvas.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-    const i = dragging_pendulum[0];
-    const j = dragging_pendulum[1];
-
-    // Update the position of the dragged circle
-    pos[i][j][0] = (x - canvas.width / 2) * 4 / min;
-    pos[i][j][1] = (canvas.height / 2 - y) * 4 / min;
-    
-    // Calculate theta1 and theta2 based on the updated position
-    theta1[i] = Math.abs(Math.atan2(pos[i][0][1], pos[i][0][0]) + Math.PI / 2);
-    theta2[i] = Math.abs(Math.atan2(pos[i][1][1], pos[i][1][0]) + Math.PI / 2);
-    if(pos[i][0][0] < 0 && pos[i][0][1] < 0)
-        theta1[i] = 2*Math.PI-theta1[i]
-    if(pos[i][1][0] < 0 && pos[i][1][1] < 0)
-        theta2[i] = 2*Math.PI-theta2[i]
-    load_settings();
-}
-
-function stopDragCircle() {
-    // Stop dragging the circle
-    reset();
-    end = true;
-    canvas.removeEventListener("mousemove", dragCircle);
-    canvas.removeEventListener("mouseup", stopDragCircle);
-}
-
-/* Connect Inputs */
-document.getElementById("m1_range").onchange = function(){
-    m1[selected_pendulum] = parseFloat(parseFloat(this.value).toFixed(2));
-    document.getElementById("m1_number").value = m1[selected_pendulum];
-}
-document.getElementById("m1_number").onchange = function(){
-    m1[selected_pendulum] = parseFloat(parseFloat(this.value).toFixed(2));
-    document.getElementById("m1_range").value = m1[selected_pendulum];
+document.getElementById("m_number").onchange = function(){
+    m = parseFloat(parseFloat(this.value).toFixed(2));
+    document.getElementById("m_range").value = m;
 } 
 
-document.getElementById("m2_range").onchange = function(){ 
-    m2[selected_pendulum] = parseFloat(parseFloat(this.value).toFixed(2));
-    document.getElementById("m2_number").value = m2[selected_pendulum];
+document.getElementById("M_range").onchange = function(){ 
+    M = parseFloat(parseFloat(this.value).toFixed(2));
+    document.getElementById("M_number").value = M;
 }
-document.getElementById("m2_number").onchange = function(){
-    m2[selected_pendulum] = parseFloat(parseFloat(this.value).toFixed(2));
-    document.getElementById("m2_range").value = m2[selected_pendulum];
-}
-
-document.getElementById("l1_range").onchange = function(){ 
-    l1[selected_pendulum] = parseFloat(parseFloat(this.value).toFixed(2));
-    document.getElementById("l1_number").value = l1[selected_pendulum];
+document.getElementById("M_number").onchange = function(){
+    M = parseFloat(parseFloat(this.value).toFixed(2));
+    document.getElementById("M_range").value = M;
 }
 
-document.getElementById("l1_number").onchange = function(){
-    l1[selected_pendulum] = parseFloat(parseFloat(this.value).toFixed(2));
-    document.getElementById("l1_range").value = l1[selected_pendulum];
+document.getElementById("l_horizontal").onchange = function(){ 
+    L = parseFloat(parseFloat(this.value).toFixed(2));
+    document.getElementById("l_horizontal_number").value = L;
 }
 
-document.getElementById("l2_range").onchange = function(){ 
-    l2[selected_pendulum] = parseFloat(parseFloat(this.value).toFixed(2));
-    document.getElementById("l2_number").value = l2[selected_pendulum];
+document.getElementById("l_total").onchange = function(){
+    Total_Length = parseFloat(parseFloat(this.value).toFixed(2));
+    document.getElementById("l_total_number").value = Total_Length;
 }
 
-document.getElementById("l2_number").onchange = function(){
-    l2[selected_pendulum] = parseFloat(parseFloat(this.value).toFixed(2));
-    document.getElementById("l2_range").value = l2[selected_pendulum];
+document.getElementById("l_total_number").onchange = function(){ 
+    Total_Length = parseFloat(parseFloat(this.value).toFixed(2));
+    document.getElementById("l_total").value = Total_Length;
 }
 
-document.getElementById("g_range").onchange = function(){ 
-    g = parseFloat(parseFloat(this.value).toFixed(2));
-    document.getElementById("g_number").value = g;
+/* Initial Conditions */
+document.getElementById("rrange").onchange = function(){
+    r = parseFloat(parseFloat(this.value).toFixed(2));
+    document.getElementById("rtotal").value = r;
 }
 
-document.getElementById("g_number").onchange = function(){
-    g = parseFloat(parseFloat(this.value).toFixed(2));
-    document.getElementById("g_range").value = g;
+document.getElementById("rtotal").onchange = function(){ 
+    r = parseFloat(parseFloat(this.value).toFixed(2));
+    document.getElementById("rrange").value = r;
 }
 
-/* Initial conditions */
-document.getElementById("a1_range").onchange = function(){ 
-    theta1[selected_pendulum] = parseFloat(this.value) * Math.PI / 180;
-    document.getElementById("a1_number").value = parseFloat(this.value);
+document.getElementById("angle_range").onchange = function(){
+    theta = parseFloat(parseFloat(this.value).toFixed(2)) * (Math.PI / 180);
+    document.getElementById("angle_number").value = parseFloat(parseFloat(this.value).toFixed(2));
 }
 
-document.getElementById("a1_number").onchange = function(){
-    theta1[selected_pendulum] = parseFloat(this.value) * Math.PI / 180;
-    document.getElementById("a1_range").value = parseFloat(this.value);
+document.getElementById("angle_number").onchange = function(){ 
+    theta = parseFloat(parseFloat(this.value).toFixed(2)) * (Math.PI / 180);
+    document.getElementById("angle_range").value = parseFloat(parseFloat(this.value).toFixed(2));
 }
 
-document.getElementById("a2_range").onchange = function(){ 
-    theta2[selected_pendulum] = parseFloat(this.value) * Math.PI / 180;
-    document.getElementById("a2_number").value = parseFloat(this.value);
+
+
+document.getElementById("trajectory_check").onchange = function(){
+    draw_trajectory_check = this.checked;
+    cleartrajectory();
 }
 
-document.getElementById("a2_number").onchange = function(){
-    theta2[selected_pendulum] = parseFloat(this.value) * Math.PI / 180;
-    document.getElementById("a2_range").value = parseFloat(this.value);
+function cleartrajectory(){
+    trajectory =new Array(max_trajectory).fill(0);
+    trajectory[0] = pos_m.slice();
+    trajectory_index=0; 
 }
 
-document.getElementById("v1_range").onchange = function(){ 
-    w_1[selected_pendulum] = parseFloat(this.value)
-    document.getElementById("v1_number").value = w_1[selected_pendulum];
-}
+function load_settings(settings){
+    // settings m M g r angle
+    document.getElementById("m_range").value = settings[0];
+    document.getElementById("m_number").value = p(settings[0]);
 
-document.getElementById("v1_number").onchange = function(){ 
-    w_1[selected_pendulum] = parseFloat(this.value)
-    document.getElementById("v1_number").value = w_1[selected_pendulum];
-}
+    document.getElementById("M_range").value = settings[1];
+    document.getElementById("M_number").value = settings[1];
 
-document.getElementById("v2_range").onchange = function(){ 
-    w_2[selected_pendulum] = parseFloat(this.value)
-    document.getElementById("v2_number").value = w_2[selected_pendulum];
-}
+    document.getElementById("g_range").value=settings[2];
+    document.getElementById("g_number").value=settings[2];
 
-document.getElementById("v2_number").onchange = function(){ 
-    w_2[selected_pendulum] = parseFloat(this.value)
-    document.getElementById("v2_number").value = w_2[selected_pendulum];
-}
+    document.getElementById("rrange").value=settings[3];
+    document.getElementById("rtotal").value=settings[3];
 
-document.getElementById("trajectory1").onchange = function(){
-    draw_trajectory1 = this.checked;
-    for (let i = 0; i < trajectory1.length; i++) {
-        trajectory1[i] = [];
-    }
+    document.getElementById("angle_range").value=settings[4];
+    document.getElementById("angle_number").value=settings[4];
     
-}
+    m=settings[0];
+    M=settings[1];
+    g=settings[2];
+    r=settings[3];
+    theta = settings[4];
 
-document.getElementById("trajectory2").onchange = function(){
-    draw_trajectory2 = this.checked;
-    for(let i = 0; i < trajectory2.length; i++){
-        trajectory2[i] = [];
-    }
 }
-
 
 /* Main */
 resize();
+L_height = canvas_to_cartesian(0, canvas.height/3)[1];
 setInterval(draw, time_step*2000);
