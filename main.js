@@ -11,8 +11,8 @@ let pos_m = [r*Math.cos(theta-Math.PI/2), r*Math.sin(theta-Math.PI/2)];
 theta = Math.PI/2;
 let end = false;
 /* Constantes SISTEMA */
-let m = 200;
-let M = 450;
+let m = 1;
+let M = 3;
 let g = 9.81;
 const time_step = 0.01;
 let y = [r, 0, Math.PI/2, 0]; 
@@ -22,7 +22,8 @@ const axis_color = "white";
 const circle_colors = ["red", "blue"]; // red for M || blue for m
 const circle_radius = [20, 30];
 /* Trajectories */
-const max_trajectory=5000;
+const max_trajectory=1000;
+let current_max = 0;
 const trajectory_color = "white";
 const trajectory_radius = 0.15;
 let trajectory_index=0;
@@ -135,8 +136,8 @@ function draw_variables() {
 function draw_trajectory(){
     if(!draw_trajectory_check)
         return;
-
-    context.fillStyle= trajectory_color;
+    context.globalAlpha = 0.3;
+    context.fillStyle = trajectory_color;
     
     /* Trajectory radius 
     for(let i = 0; i< trajectory_index; i++){
@@ -148,14 +149,20 @@ function draw_trajectory(){
     } */
     
     context.beginPath(); 
-    context.moveTo(...cartesian_to_canvas(trajectory[0][0] -L, L_height + trajectory[0][1]));
-    for(let i = 1; i< trajectory_index; i++){
+    context.moveTo(...cartesian_to_canvas(trajectory[current_max][0] -L, L_height + trajectory[current_max][1]));
+    for(let i = current_max+1; i< trajectory_index; i++){
+        const cart_pos = cartesian_to_canvas(trajectory[i][0] - L, L_height + trajectory[i][1]);
+        context.lineTo(...cart_pos);
+    }
+
+    for(let i = 0; i< current_max; i++){
         const cart_pos = cartesian_to_canvas(trajectory[i][0] - L, L_height + trajectory[i][1]);
         context.lineTo(...cart_pos);
     }
 
     context.stroke();
     context.closePath();
+    context.globalAlpha = 1;
 }
 function draw(){
     draw_axis();
@@ -176,11 +183,15 @@ function solve(){
     y = runge_Kutta(0, y, f, time_step, 0)
     pos_m = [y[0]*Math.cos(y[2]-Math.PI/2), y[0]*Math.sin(y[2]-Math.PI/2)]
     
-    trajectory[trajectory_index] = pos_m.slice();
+    trajectory[current_max] = pos_m.slice();
     
-    trajectory_index++;
-    if(trajectory_index == max_trajectory)
-        trajectory_index=0;
+    
+    current_max++;
+    if(current_max == max_trajectory)
+        current_max=0;
+
+    if(trajectory_index < max_trajectory)
+        trajectory_index++;
 }
 
 
@@ -304,14 +315,19 @@ function reset(){
 
 /* Variable for orbits */
 let current_orbit = 0;
-let orbits = 
+// settings m M g r angle
+let orbits = [[1, 2, 9.81, 1, Math.PI/2], [1, 3, 9.81, 1, Math.PI/2], [1, 5, 9.81, 1, Math.PI/2], [1, 6, 9.81, 1, Math.PI/2], [1, 19, 9.81, 1, Math.PI/2], [1, 21, 9.81, 1, Math.PI/2], [1, 24, 9.81, 1, Math.PI/2]]
 function next_orbit(){
-    
+    current_orbit++;
+    if(current_orbit == orbits.length)
+        current_orbit = 0;
+    load_settings(orbits[current_orbit]);
+    reset();
 }
 
 document.getElementById("reset").onclick = reset;
 
-document.getElementById("shuffle").onclick;
+document.getElementById("shuffle").onclick = next_orbit;
 
 document.getElementById("m_range").onchange = function(){
     m = parseFloat(parseFloat(this.value).toFixed(2));
@@ -378,12 +394,13 @@ function cleartrajectory(){
     trajectory =new Array(max_trajectory).fill(0);
     trajectory[0] = pos_m.slice();
     trajectory_index=0; 
+    current_max=0;
 }
 
 function load_settings(settings){
     // settings m M g r angle
     document.getElementById("m_range").value = settings[0];
-    document.getElementById("m_number").value = p(settings[0]);
+    document.getElementById("m_number").value = settings[0];
 
     document.getElementById("M_range").value = settings[1];
     document.getElementById("M_number").value = settings[1];
